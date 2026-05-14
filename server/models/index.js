@@ -210,8 +210,18 @@ const ReadabilityAnalysis = sequelize.define('ReadabilityAnalysis', {
   userId: { type: DataTypes.INTEGER, allowNull: false }
 }, { tableName: 'readability_analysis', timestamps: true });
 
+// Content Version
+const ContentVersion = sequelize.define('ContentVersion', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  contentId: { type: DataTypes.INTEGER, allowNull: false },
+  versionNumber: { type: DataTypes.INTEGER, defaultValue: 1 },
+  contentText: { type: DataTypes.TEXT },
+  createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+}, { tableName: 'content_versions', timestamps: false });
+
 module.exports = {
   sequelize,
+  ContentVersion,
   User,
   KeywordResearch,
   ContentGeneration,
