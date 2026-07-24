@@ -7,6 +7,12 @@ const {
   SchemaMarkup, ContentCalendar, ReadabilityAnalysis
 } = require('./models');
 
+function requireDemoPassword() {
+  const password = process.env.DEMO_PASSWORD || process.env.SEED_DEMO_PASSWORD || process.env.DEMO_SEED_PASSWORD || '';
+  if (password.length < 12 || password.length > 1024) throw new Error('DEMO_PASSWORD must contain 12-1024 characters');
+  return password;
+}
+
 async function seed() {
   try {
     await sequelize.authenticate();
@@ -16,7 +22,7 @@ async function seed() {
 
     // Create demo user
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('password123', salt);
+    const hashedPassword = await bcrypt.hash(requireDemoPassword(), salt);
     const user = await User.create({
       email: 'demo@seocontent.ai',
       password: hashedPassword,
@@ -24,7 +30,7 @@ async function seed() {
       role: 'admin'
     });
     const userId = user.id;
-    console.log('Demo user created: demo@seocontent.ai / password123');
+    console.log('Demo login users provisioned from the local environment.');
 
     // Seed Keyword Research (15 items)
     const keywords = [
@@ -342,7 +348,7 @@ async function seed() {
     console.log('Seeded 15 readability analysis items.');
 
     console.log('\n✅ Database seeded successfully!');
-    console.log('Login credentials: demo@seocontent.ai / password123');
+    console.log('Demo login users provisioned from the local environment.');
     process.exit(0);
   } catch (err) {
     console.error('Seed error:', err);
