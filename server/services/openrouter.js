@@ -1,7 +1,4 @@
-const https = require('https');
 require('dotenv').config();
-
-const MODEL = 'anthropic/claude-3-5-sonnet-20241022';
 
 // 3-strategy JSON parser
 function parseAIJson(text) {
@@ -27,11 +24,10 @@ function parseAIJson(text) {
 
 async function callOpenRouter(prompt, systemPrompt = 'You are an expert SEO content writer and analyst.') {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL || MODEL;
+  const model = process.env.OPENROUTER_MODEL;
+  const baseUrl = String(process.env.OPENROUTER_BASE_URL || '').replace(/\/$/, '');
 
-  if (!apiKey || apiKey === 'your_openrouter_api_key_here') {
-    throw new Error('OPENROUTER_API_KEY not configured in .env file');
-  }
+  if (!apiKey || !model || !baseUrl || apiKey === 'your_openrouter_api_key_here') throw new Error('OpenRouter runtime configuration is required');
 
   const data = JSON.stringify({
     model,
@@ -43,40 +39,23 @@ async function callOpenRouter(prompt, systemPrompt = 'You are an expert SEO cont
     temperature: 0.7,
   });
 
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'openrouter.ai',
-      path: '/api/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:3000',
-        'X-Title': 'AI SEO Content Writer',
-      },
-    };
-
-    const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', (chunk) => { body += chunk; });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(body);
-          if (parsed.error) {
-            reject(new Error(parsed.error.message || 'OpenRouter API error'));
-          } else {
-            resolve(parsed);
-          }
-        } catch (e) {
-          reject(new Error('Failed to parse OpenRouter response'));
-        }
-      });
-    });
-
-    req.on('error', (e) => reject(e));
-    req.write(data);
-    req.end();
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:3000',
+      'X-Title': 'AI SEO Content Writer',
+    },
+    body: data,
   });
+  if (!response.ok) throw new Error(`OpenRouter request failed with HTTP ${response.status}`);
+  const parsed = await response.json();
+  if (parsed.error) throw new Error(parsed.error.message || 'OpenRouter API error');
+  const content = String(parsed.choices?.[0]?.message?.content || '').trim();
+  if (!content) throw new Error('OpenRouter returned empty content');
+  parsed.choices[0].message.content = content;
+  return parsed;
 }
 
 module.exports = { callOpenRouter, parseAIJson };
